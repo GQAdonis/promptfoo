@@ -17,27 +17,24 @@ export const dynamic = IS_RUNNING_LOCALLY ? 'auto' : 'force-dynamic';
 
 async function runWithDatabase(testSuite: EvaluateTestSuiteWithEvaluateOptions) {
   const supabase = createRouteHandlerClient({ cookies });
-
   const job = await createJob(supabase);
 
-  promptfoo
-    .evaluate(
-      Object.assign({}, testSuite, {
-        sharing: testSuite.sharing ?? true,
-        eventSource: 'webui',
-      }),
-      {
-        ...testSuite.evaluateOptions,
-        progressCallback: (progress, total) => {
-          updateJob(supabase, job.id, progress, total);
-          console.log(`[${job.id}] ${progress}/${total}`);
-        },
+  const result = await promptfoo.evaluate(
+    {
+      ...testSuite,
+      sharing: testSuite.sharing ?? true,
+      eventSource: 'webui',
+    },
+    {
+      ...testSuite.evaluateOptions,
+      progressCallback: (progress: number, total: number) => {
+        updateJob(supabase, job.id, progress, total);
+        console.log(`[${job.id}] ${progress}/${total}`);
       },
-    )
-    .then(async (result) => {
-      console.log(`[${job.id}] Completed`);
-      await createResult(supabase, job.id, testSuite, result);
-    });
+    },
+  );
+  console.log(`[${job.id}] Completed`);
+  await createResult(supabase, job.id, testSuite, result);
 
   return NextResponse.json({ id: job.id });
 }
@@ -52,31 +49,30 @@ export async function POST(req: Request) {
     const id = uuidv4();
     evalJobs.set(id, { status: 'in-progress', progress: 0, total: 0, result: null });
 
-    promptfoo
-      .evaluate(
-        Object.assign({}, testSuite, {
-          writeLatestResults: true,
-          sharing: testSuite.sharing ?? true,
-        }),
-        {
-          ...testSuite.evaluateOptions,
-          eventSource: 'web',
-          progressCallback: (progress, total) => {
-            const job = evalJobs.get(id);
-            invariant(job, 'Job not found');
-            job.progress = progress;
-            job.total = total;
-            console.log(`[${id}] ${progress}/${total}`);
-          },
+    const result = await promptfoo.evaluate(
+      {
+        ...testSuite,
+        writeLatestResults: true,
+        sharing: testSuite.sharing ?? true,
+      },
+      {
+        ...testSuite.evaluateOptions,
+        eventSource: 'web',
+        progressCallback: (progress: number, total: number) => {
+          const job = evalJobs.get(id);
+          invariant(job, 'Job not found');
+          job.progress = progress;
+          job.total = total;
+          console.log(`[${id}] ${progress}/${total}`);
         },
-      )
-      .then((result) => {
-        const job = evalJobs.get(id);
-        invariant(job, 'Job not found');
-        job.status = 'complete';
-        job.result = result;
-        console.log(`[${id}] Complete`);
-      });
+      },
+    );
+
+    const job = evalJobs.get(id);
+    invariant(job, 'Job not found');
+    job.status = 'complete';
+    job.result = result;
+    console.log(`[${id}] Complete`);
 
     return NextResponse.json({ id });
   }
