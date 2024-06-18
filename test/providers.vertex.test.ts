@@ -1,6 +1,5 @@
 import { VertexChatProvider } from '../src/providers/vertex';
 import { getCache, isCacheEnabled } from '../src/cache';
-import * as vertexModule from '../src/providers/vertex';
 import * as vertexUtil from '../src/providers/vertexUtil';
 
 import type { JSONClient } from 'google-auth-library/build/src/auth/googleauth';
@@ -34,19 +33,19 @@ describe('VertexChatProvider.callGeminiApi', () => {
       },
     });
 
-    (getCache as jest.Mock).mockReturnValue({
+    jest.mocked(getCache).mockReturnValue({
       get: jest.fn(),
       set: jest.fn(),
     });
 
-    (isCacheEnabled as jest.Mock).mockReturnValue(true);
+    jest.mocked(isCacheEnabled).mockReturnValue(true);
   });
 
   afterEach(() => {
     jest.clearAllMocks();
   });
 
-  test('should call the Gemini API and return the response', async () => {
+  it('should call the Gemini API and return the response', async () => {
     const mockResponse = {
       data: [
         {
@@ -80,7 +79,7 @@ describe('VertexChatProvider.callGeminiApi', () => {
     });
   });
 
-  test('should return cached response if available', async () => {
+  it('should return cached response if available', async () => {
     const mockCachedResponse = {
       cached: true,
       output: 'cached response text',
@@ -91,7 +90,7 @@ describe('VertexChatProvider.callGeminiApi', () => {
       },
     };
 
-    (getCache().get as jest.Mock).mockResolvedValue(JSON.stringify(mockCachedResponse));
+    jest.mocked(getCache().get).mockResolvedValue(JSON.stringify(mockCachedResponse));
 
     const response = await provider.callGeminiApi('test prompt');
 
@@ -104,7 +103,7 @@ describe('VertexChatProvider.callGeminiApi', () => {
     });
   });
 
-  test('should handle API call errors', async () => {
+  it('should handle API call errors', async () => {
     const mockError = new Error('API call error');
     jest.spyOn(vertexUtil, 'getGoogleClient').mockResolvedValue({
       client: {
@@ -120,7 +119,7 @@ describe('VertexChatProvider.callGeminiApi', () => {
     });
   });
 
-  test('should handle API response errors', async () => {
+  it('should handle API response errors', async () => {
     const mockResponse = {
       data: [
         {
